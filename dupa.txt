@@ -1,1 +1,5 @@
-asd
+Inside .pio/libdeps/nucleo_l152re/STM32duinoBLE/src/utility/HCISpiTransport.cpp, add
+#define BNRG2A1_SPI_CLOCK_D3 0
+żeby działało
+
+https://wykop.pl/cdn/c3201142/comment_alX1xBdWmVRGTZwOzrPp47ofDLqxYYw6.jpg

@@ -1,3 +1,10 @@
+#include "ble_spi_conf.h"
+// Ten include powyżej coś nie działa, i trzeba samemu sobie wsadzić
+#define BNRG2A1_SPI_CLOCK_D3 0
+// Na góre pliku: .pio/libdeps/nucleo_l152re/STM32duinoBLE/src/utility/HCISpiTransport.cpp
+// żeby działało
+// :)
+#include <STM32duinoBLE.h>
 #include <Arduino.h>
 #include <Wire.h>
 #include <TMP117.h>
@@ -13,6 +20,10 @@ TMP117 tmp(TMP_ADDR);
 uint8_t HDC_ADDR_GND = 0x44;
 uint8_t HDC_ADDR = HDC_ADDR_GND;
 Adafruit_HDC302x hdc = Adafruit_HDC302x();
+
+BLEService sensorsService("a61c8642-2e46-4d1d-2137-f77d8adb5e41");
+BLEDoubleCharacteristic charTemp("0000", BLERead | BLEBroadcast | BLENotify);
+BLEDoubleCharacteristic charHumid("0001", BLERead | BLEBroadcast | BLENotify);
 
 void newTempEmpty() {
 }
@@ -60,11 +71,26 @@ double getHumidity() {
 // ===== Koniec funkcji odczytu =====
 
 
-
 void setup() {
     Serial.begin(115200);
     Wire.begin();
-    delay(1000);
+    delay(500);
+
+    // Sprawdzenie bluetooth
+    if (!BLE.begin()) {
+        while (true) {
+            Serial.println("failed to initialize BLE!");
+            delay(1000);
+        }
+    }
+    charTemp.writeValue(2137);
+    charHumid.writeValue(2137);
+    sensorsService.addCharacteristic(charTemp);
+    sensorsService.addCharacteristic(charHumid);
+    BLE.addService(sensorsService);
+    BLE.setAdvertisedService(sensorsService);
+    BLE.setLocalName("GekoSense");
+    BLE.advertise();
 
     // Sprawdzenie termometru
     if (thermometerOk()) {
@@ -85,29 +111,25 @@ void setup() {
     delay(1000);
 }
 
+unsigned long long lastCheck = 0;
+
 void loop() {
-    if (useThermometer) {
-        Serial.print("Temperatura: ");
-        Serial.print(getTemperature());
-        Serial.println("°C");
-    }
-    if (useHumidity) {
-        Serial.print("Wilgotność: ");
-        Serial.print(getHumidity());
-        Serial.println("%");
-    }
-    delay(1000);
-}
-
-
-/// Pomocnicza funkcja do szukania adresów urządzeń dostępnych na I2C
-void i2cScan() {
-    for (int i = 1; i < 127; i++) {
-        Wire.beginTransmission(i);
-        byte error = Wire.endTransmission();
-        if (error == 0) {
-            Serial.print("Found I2C dev at ");
-            Serial.println(i);
+    if (millis() - lastCheck > 5000) {
+        lastCheck = millis();
+        if (useThermometer) {
+            double temp = getTemperature();
+            Serial.print("Temperatura: ");
+            Serial.print(temp);
+            Serial.println("°C");
+            charTemp.writeValue(temp);
+        }
+        if (useHumidity) {
+            double humid = getHumidity();
+            Serial.print("Wilgotność: ");
+            Serial.print(humid);
+            Serial.println("%");
+            charHumid.writeValue(humid);
         }
     }
+    BLE.poll();
 }
