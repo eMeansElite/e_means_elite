@@ -5,6 +5,7 @@
 // żeby działało
 // :)
 #include <STM32duinoBLE.h>
+#include <STM32LowPower.h>
 #include <Arduino.h>
 #include <Wire.h>
 #include <TMP117.h>
@@ -132,4 +133,7 @@ void loop() {
         }
     }
     BLE.poll();
+    if (millis() > 30 * 1000) {
+        LowPower.shutdown(15 * 60 * 1000);
+    }
 }
